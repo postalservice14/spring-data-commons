@@ -408,7 +408,7 @@ public class DefaultRepositoryInformationUnitTests {
 		<S extends User> List<S> saveAll(Iterable<S> entites);
 	}
 
-	static class DummyRepositoryImpl<T, ID> implements CrudRepository<T, ID> {
+	static abstract class DummyRepositoryImpl<T, ID> implements CrudRepository<T, ID> {
 
 		private @Delegate CrudRepository<T, ID> delegate;
 	}
