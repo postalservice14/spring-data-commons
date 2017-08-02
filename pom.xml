@@ -352,6 +352,8 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>
+				<!-- see https://issues.apache.org/jira/browse/MENFORCER-275 -->
+				<version>3.0.0-M1</version>
 				<executions>
 					<execution>
 						<id>enforce-rules</id>
@@ -363,7 +365,7 @@
 				<configuration>
 					<rules>
 						<requireJavaVersion>
-							<version>[1.8,1.9)</version>
+							<version>[9,10)</version>
 						</requireJavaVersion>
 					</rules>
 				</configuration>
