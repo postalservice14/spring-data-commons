@@ -18,7 +18,14 @@ cache:
   directories:
     - $HOME/.m2
 
-sudo: false
+# probably should be set to false before merge with master
+sudo: required
+
+# remove before merge with master
+dist: trusty
+
+# remove before merge with master
+group: edge
 
 install: true
 
