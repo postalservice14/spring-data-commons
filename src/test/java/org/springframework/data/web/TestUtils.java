@@ -18,20 +18,26 @@ package org.springframework.data.web;
 import java.lang.reflect.Method;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
 /**
  * General test utilities.
- * 
+ *
  * @since 1.6
  * @author Oliver Gierke
+ * @author Mark Paluch
  */
 class TestUtils {
 
 	public static NativeWebRequest getWebRequest() {
 		return new ServletWebRequest(new MockHttpServletRequest());
+	}
+
+	public static MockServerHttpRequest getWebfluxRequest() {
+		return MockServerHttpRequest.get("foo").build();
 	}
 
 	public static MethodParameter getParameterOfMethod(Class<?> controller, String name, Class<?>... argumentTypes) {

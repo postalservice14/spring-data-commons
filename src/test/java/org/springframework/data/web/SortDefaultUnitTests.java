@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.data.web;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.data.domain.Sort.Direction.*;
 
+import java.util.Arrays;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -30,9 +32,10 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 
 /**
  * Unit tests for {@link SortDefault}.
- * 
+ *
  * @since 1.6
  * @author Oliver Gierke
+ * @author Mark Paluch
  */
 public abstract class SortDefaultUnitTests {
 
@@ -61,7 +64,7 @@ public abstract class SortDefaultUnitTests {
 	private static void assertSortStringParsedInto(Sort expected, String... source) {
 
 		SortHandlerMethodArgumentResolver resolver = new SortHandlerMethodArgumentResolver();
-		Sort sort = resolver.parseParameterIntoSort(source, ",");
+		Sort sort = resolver.parseParameterIntoSort(Arrays.asList(source), ",");
 
 		assertThat(sort).isEqualTo(expected);
 	}
