@@ -20,11 +20,13 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,7 @@ import org.springframework.data.repository.core.EntityInformation;
 import org.springframework.data.repository.core.NamedQueries;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.RepositoryMetadata;
+import org.springframework.data.repository.core.ResultPostProcessor;
 import org.springframework.data.repository.core.support.RepositoryComposition.RepositoryFragments;
 import org.springframework.data.repository.query.DefaultEvaluationContextProvider;
 import org.springframework.data.repository.query.EvaluationContextProvider;
@@ -60,6 +63,7 @@ import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.util.ClassUtils;
 import org.springframework.data.repository.util.ReactiveWrapperConverters;
 import org.springframework.data.repository.util.ReactiveWrappers;
+import org.springframework.data.util.BeanLookup;
 import org.springframework.data.util.Pair;
 import org.springframework.data.util.ReflectionUtils;
 import org.springframework.lang.Nullable;
@@ -314,7 +318,9 @@ public abstract class RepositoryFactorySupport implements BeanClassLoaderAware, 
 		result.addAdvice(new DefaultMethodInvokingMethodInterceptor());
 
 		ProjectionFactory projectionFactory = getProjectionFactory(classLoader, beanFactory);
-		result.addAdvice(new QueryExecutorMethodInterceptor(information, projectionFactory));
+		ResultPostProcessorInvoker invoker = getPostProcessorInvoker(projectionFactory, information);
+
+		result.addAdvice(new QueryExecutorMethodInterceptor(information, projectionFactory, invoker));
 
 		composition = composition.append(RepositoryFragment.implemented(target));
 		result.addAdvice(new ImplementationMethodExecutionInterceptor(composition));
@@ -397,6 +403,26 @@ public abstract class RepositoryFactorySupport implements BeanClassLoaderAware, 
 
 			return new DefaultRepositoryInformation(metadata, baseClass, composition);
 		});
+	}
+
+	/**
+	 * Returns a {@link ResultPostProcessorInvoker} for the given {@link ProjectionFactory} and
+	 * {@link RepositoryInformation}.
+	 * 
+	 * @param projectionFactory must not be {@literal null}.
+	 * @param information must not be {@literal null}.
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private ResultPostProcessorInvoker getPostProcessorInvoker(ProjectionFactory projectionFactory,
+			RepositoryInformation information) {
+
+		Collection<ResultPostProcessor.ByType<?>> orderedBeansOfType = beanFactory == null //
+				? Collections.emptyList() //
+				: (Collection<ResultPostProcessor.ByType<?>>) BeanLookup.orderedBeansOfType(ResultPostProcessor.ByType.class,
+						beanFactory);
+
+		return new ResultPostProcessorInvoker(information.getDomainType(), orderedBeansOfType);
 	}
 
 	protected List<QueryMethod> getQueryMethods() {
@@ -518,11 +544,15 @@ public abstract class RepositoryFactorySupport implements BeanClassLoaderAware, 
 		/**
 		 * Creates a new {@link QueryExecutorMethodInterceptor}. Builds a model of {@link QueryMethod}s to be invoked on
 		 * execution of repository interface methods.
+		 * 
+		 * @param repositoryInformation must not be {@literal null}.
+		 * @param projectionFactory must not be {@literal null}.
+		 * @param invoker must not be {@literal null}.
 		 */
 		public QueryExecutorMethodInterceptor(RepositoryInformation repositoryInformation,
-				ProjectionFactory projectionFactory) {
+				ProjectionFactory projectionFactory, ResultPostProcessorInvoker invoker) {
 
-			this.resultHandler = new QueryExecutionResultHandler();
+			this.resultHandler = new QueryExecutionResultHandler(invoker);
 
 			Optional<QueryLookupStrategy> lookupStrategy = getQueryLookupStrategy(queryLookupStrategyKey,
 					RepositoryFactorySupport.this.evaluationContextProvider);
@@ -681,6 +711,19 @@ public abstract class RepositoryFactorySupport implements BeanClassLoaderAware, 
 
 			this.repositoryInterfaceName = metadata.getRepositoryInterface().getName();
 			this.compositionHash = composition.hashCode();
+		}
+	}
+
+	@Slf4j
+	private static class NoOpLoggingMethodInterceptor implements MethodInterceptor {
+
+		/* 
+		 * (non-Javadoc)
+		 * @see org.aopalliance.intercept.MethodInterceptor#invoke(org.aopalliance.intercept.MethodInvocation)
+		 */
+		@Override
+		public Object invoke(MethodInvocation invocation) throws Throwable {
+			return invocation.proceed();
 		}
 	}
 }

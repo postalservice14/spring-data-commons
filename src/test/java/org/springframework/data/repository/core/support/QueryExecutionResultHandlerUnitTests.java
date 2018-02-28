@@ -35,9 +35,12 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.reactivestreams.Publisher;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.core.ResultPostProcessor;
 import org.springframework.data.util.Streamable;
 
 /**
@@ -362,6 +365,43 @@ public class QueryExecutionResultHandlerUnitTests {
 				it -> assertThat(it.stream().collect(Collectors.toList())).isEqualTo(source));
 	}
 
+	@Test
+	public void invokesPostProcessorForSingleResult() throws Exception {
+
+		ResultPostProcessor.ForAggregate processor = it -> {
+			ProxyFactory factory = new ProxyFactory(it);
+			return factory.getProxy();
+		};
+
+		QueryExecutionResultHandler handler = new QueryExecutionResultHandler(
+				new ResultPostProcessorInvoker(Object.class, Collections.singleton(processor)));
+
+		Object result = handler.postProcessInvocationResult(Optional.of(new Entity()), getMethod("jdk8Optional"));
+
+		assertThat(result).isInstanceOf(Optional.class);
+		assertThat((Optional<?>) result).hasValueSatisfying(it -> {
+			assertThat(it).isInstanceOf(Advised.class);
+		});
+	}
+
+	@Test
+	public void invokesPostProcessorForCollectionResult() throws Exception {
+
+		ResultPostProcessor.ForAggregate processor = it -> {
+			ProxyFactory factory = new ProxyFactory(it);
+			return factory.getProxy();
+		};
+
+		QueryExecutionResultHandler handler = new QueryExecutionResultHandler(
+				new ResultPostProcessorInvoker(Object.class, Collections.singleton(processor)));
+
+		Object result = handler.postProcessInvocationResult(Arrays.asList(new Entity(), new Entity()),
+				getMethod("findAll"));
+
+		assertThat(result).isInstanceOf(Streamable.class);
+		assertThat((Streamable<?>) result).allMatch(Advised.class::isInstance);
+	}
+
 	private static Method getMethod(String methodName) throws Exception {
 		return Sample.class.getMethod(methodName);
 	}
@@ -387,6 +427,8 @@ public class QueryExecutionResultHandlerUnitTests {
 		Single<Entity> single();
 
 		Completable completable();
+
+		Streamable<Entity> findAll();
 	}
 
 	static class Entity {}

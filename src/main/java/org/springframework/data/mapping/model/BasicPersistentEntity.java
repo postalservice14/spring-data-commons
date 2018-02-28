@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mapping.Alias;
@@ -447,7 +448,9 @@ public class BasicPersistentEntity<T, P extends PersistentProperty<P>> implement
 		Assert.isTrue(getType().isInstance(bean),
 				() -> String.format(TYPE_MISMATCH, bean.getClass().getName(), getType().getName()));
 
-		return propertyAccessorFactory.getPropertyAccessor(this, bean);
+		Object proxyTarget = AopProxyUtils.getSingletonTarget(bean);
+
+		return propertyAccessorFactory.getPropertyAccessor(this, proxyTarget != null ? proxyTarget : bean);
 	}
 
 	/*
