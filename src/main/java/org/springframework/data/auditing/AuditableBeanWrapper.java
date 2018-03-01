@@ -61,4 +61,20 @@ public interface AuditableBeanWrapper {
 	 * @param value
 	 */
 	TemporalAccessor setLastModifiedDate(TemporalAccessor value);
+
+	/**
+	 * Return the type used as creator.
+	 * 
+	 * @return
+	 * @since 2.1
+	 */
+	Optional<Class<?>> getCreatorType();
+
+	/**
+	 * Return the used as modifier.
+	 * 
+	 * @return
+	 * @since 2.1
+	 */
+	Optional<Class<?>> getModifierType();
 }

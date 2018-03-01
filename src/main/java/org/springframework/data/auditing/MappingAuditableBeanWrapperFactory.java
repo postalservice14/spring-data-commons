@@ -203,6 +203,24 @@ public class MappingAuditableBeanWrapperFactory extends DefaultAuditableBeanWrap
 			return setDateProperty(metadata.lastModifiedDateProperty, value);
 		}
 
+		/* 
+		 * (non-Javadoc)
+		 * @see org.springframework.data.auditing.AuditableBeanWrapper#getCreatorType()
+		 */
+		@Override
+		public Optional<Class<?>> getCreatorType() {
+			return metadata.createdByProperty.map(PersistentProperty::getType);
+		}
+
+		/* 
+		 * (non-Javadoc)
+		 * @see org.springframework.data.auditing.AuditableBeanWrapper#getModifierType()
+		 */
+		@Override
+		public Optional<Class<?>> getModifierType() {
+			return metadata.lastModifiedByProperty.map(PersistentProperty::getType);
+		}
+
 		private <T, P extends PersistentProperty<?>> T setProperty(Optional<P> property, T value) {
 
 			property.ifPresent(it -> this.accessor.setProperty(it, value));
