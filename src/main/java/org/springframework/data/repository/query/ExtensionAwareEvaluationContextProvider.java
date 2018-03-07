@@ -25,8 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -63,13 +65,14 @@ import org.springframework.util.StringUtils;
  * @author Oliver Gierke
  * @author Christoph Strobl
  * @author Jens Schauder
+ * @author Mark Paluch
  * @since 1.9
  */
 public class ExtensionAwareEvaluationContextProvider implements EvaluationContextProvider, ApplicationContextAware {
 
-	private final Map<Class<?>, EvaluationContextExtensionInformation> extensionInformationCache = new HashMap<>();
-
+	private final Map<Class<?>, EvaluationContextExtensionInformation> extensionInformationCache;
 	private final Lazy<List<? extends EvaluationContextExtension>> extensions;
+
 	private Optional<ListableBeanFactory> beanFactory = Optional.empty();
 
 	/**
@@ -77,6 +80,8 @@ public class ExtensionAwareEvaluationContextProvider implements EvaluationContex
 	 * {@link BeanFactory} configured.
 	 */
 	public ExtensionAwareEvaluationContextProvider() {
+
+		this.extensionInformationCache = new ConcurrentHashMap<>();
 		this.extensions = Lazy.of(() -> getExtensionsFrom(beanFactory));
 	}
 
@@ -88,7 +93,25 @@ public class ExtensionAwareEvaluationContextProvider implements EvaluationContex
 	public ExtensionAwareEvaluationContextProvider(List<? extends EvaluationContextExtension> extensions) {
 
 		Assert.notNull(extensions, "List of EvaluationContextExtensions must not be null!");
+
+		this.extensionInformationCache = new ConcurrentHashMap<>();
 		this.extensions = Lazy.of(() -> extensions);
+	}
+
+	/**
+	 * Creates a new {@link ExtensionAwareEvaluationContextProvider} from a parent
+	 * {@link ExtensionAwareEvaluationContextProvider} that copies all references.
+	 *
+	 * @param parent must not be {@literal null}.
+	 * @since 2.1
+	 */
+	ExtensionAwareEvaluationContextProvider(ExtensionAwareEvaluationContextProvider parent) {
+
+		Assert.notNull(parent, "ExtensionAwareEvaluationContextProvider must not be null!");
+
+		this.extensionInformationCache = parent.extensionInformationCache;
+		this.extensions = parent.extensions;
+		this.beanFactory = parent.beanFactory;
 	}
 
 	/*
@@ -111,7 +134,7 @@ public class ExtensionAwareEvaluationContextProvider implements EvaluationContex
 
 		beanFactory.ifPresent(it -> ec.setBeanResolver(new BeanFactoryResolver(it)));
 
-		ExtensionAwarePropertyAccessor accessor = new ExtensionAwarePropertyAccessor(extensions.get());
+		ExtensionAwarePropertyAccessor accessor = new ExtensionAwarePropertyAccessor(getExtensions());
 
 		ec.addPropertyAccessor(accessor);
 		ec.addPropertyAccessor(new ReflectivePropertyAccessor());
@@ -122,6 +145,15 @@ public class ExtensionAwareEvaluationContextProvider implements EvaluationContex
 		ec.setVariables(collectVariables(parameters, parameterValues));
 
 		return ec;
+	}
+
+	/**
+	 * @return a {@link List} of configured {@link EvaluationContextExtension}s.
+	 * @since 2.1
+	 */
+	@NotNull
+	protected List<? extends EvaluationContextExtension> getExtensions() {
+		return extensions.get();
 	}
 
 	/**
